@@ -1,51 +1,58 @@
-# Chainlink Functions Starter Kit
+# Chainlink Functions <>  Google BigQuery and Google Analytics Sample Application
 
-- [Chainlink Functions Starter Kit](#chainlink-functions-starter-kit)
-- [Overview](#overview)
-- [Quickstart](#quickstart)
-  - [Requirements](#requirements)
-  - [Steps](#steps)
-- [Command Glossary](#command-glossary)
-    - [Functions Commands](#functions-commands)
-    - [Functions Subscription Management Commands](#functions-subscription-management-commands)
-- [Request Configuration](#request-configuration)
-  - [JavaScript Code](#javascript-code)
-    - [Functions Library](#functions-library)
-  - [Modifying Contracts](#modifying-contracts)
-  - [Simulating Requests](#simulating-requests)
-  - [Off-chain Secrets](#off-chain-secrets)
-- [Automation Integration](#automation-integration)
+This use case showcases how a developer can use Chainlink Functions together with website data collected by Google Analytics to drive and influence logic in an on-chain smart contract. For this particular example, a user is directed to a [website](https://www.dogorcat.xyz/) where they can vote for a dog or cat, with their selection being sent to [Google Analytics](https://analytics.google.com/analytics/web/). The collected data is then automatically uploaded to a dataset in [Google Cloud’s BigQuery](https://cloud.google.com/bigquery). From here, [Chainlink Automation](https://chain.link/automation) will be used to regularly call a Chainlink Function to pull the vote totals from Google BigQuery and then return them on-chain. The smart contract will use this analytics data to keep track of vote totals. Once the voting period has ended, a function in the smart contract will determine who the winner is. 
 
-# Overview
+This application has been deployed and can be tested at [https://www.dogorcat.xyz/](https://www.dogorcat.xyz/)
 
-<p><b>This project is currently in a closed beta. Request access to send on-chain requests here <a href="https://functions.chain.link/">https://functions.chain.link/</a></b></p>
+Chainlink Functions allows users to request data from almost any API and perform custom computation using JavaScript. This project is currently in a closed beta. Request access to use Chainlink Functions at https://functions.chain.link
 
-<p>Chainlink Functions allows users to request data from almost any API and perform custom computation using JavaScript.</p>
-<p>It works by using a <a href="https://chain.link/education/blockchain-oracles#decentralized-oracles">decentralized oracle network</a> (DON).<br>When a request is initiated, each node in the DON executes the user-provided JavaScript code simultaneously.  Then, nodes use the <a href="https://docs.chain.link/architecture-overview/off-chain-reporting/">Chainlink OCR</a> protocol to come to consensus on the results.  Finally, the median result is returned to the requesting contract via a callback function.</p>
-<p>Chainlink Functions also enables users to share encrypted secrets with each node in the DON.  This allows users to access to APIs that require authentication, without exposing their API keys to the general public.
-
-# Quickstart
 
 ## Requirements
 
-- Node.js version [18.0](https://nodejs.org/en/download/) or greater
+- Node.js version [18](https://nodejs.org/en/download/)
 
-## Steps
+## Instructions to run this sample
 
 1. Clone this repository to your local machine<br><br>
 2. Open this directory in your command line, then run `npm install` to install all dependencies.<br><br>
 3. Set the required environment variables.
-   1. This can be done by renaming the file `.env.example` to `.env` (this renaming is important so that it does not get checked in with git!) and then changing the following values:
-      - `PRIVATE_KEY` for your development wallet.
-      - One of either `MUMBAI_RPC_URL` or `SEPOLIA_RPC_URL` for the network that you intend to use.
-   2. If desired, the `ETHERSCAN_API_KEY` or `POLYGONSCAN_API_KEY` can also be set in order to verify contracts, along with any values used in the `secrets` object in `Functions-request-config.js`.<br><br>
-4. There are two files to notice that the default example will use:
-   - `contracts/FunctionsConsumer.sol` contains the smart contract that will receive the data.
-   - `calculation-example.js` contains JavaScript code that will be executed by each node of the DON.<br><br>
-5. Test an end-to-end request and fulfillment to this contract locally by simulating it using:<br>`npx hardhat functions-simulate`<br><br>
-6. Deploy and verify the consuming contract to an actual blockchain network by running:<br>`npx hardhat functions-deploy-client --network network_name_here --verify true`<br>**Note**: Make sure `ETHERSCAN_API_KEY` or `POLYGONSCAN_API_KEY` are set if using `--verify true`, depending on which network is used.<br><br>
-7. Create, fund & authorize a new Functions billing subscription by running:<br> `npx hardhat functions-sub-create --network network_name_here --amount LINK_funding_amount_here --contract 0xDeployed_client_contract_address_here`<br>**Note**: Ensure your wallet has a sufficient LINK balance before running this command.  Testnet link can be obtained at <a href="https://faucets.chain.link/">faucets.chain.link</a>.<br><br>
-8. Make an on-chain request by running:<br>`npx hardhat functions-request --network network_name_here --contract 0xDeployed_client_contract_address_here --subid subscription_id_number_here`
+   1. This can be done by copying the file *.env.example* to a new file named *.env*. (This renaming is important so that it won't be tracked by Git.) Then, change the following values:
+      - *PRIVATE_KEY* for your development wallet
+      - *MUMBAI_RPC_URL* or *SEPOLIA_RPC_URL* for the network that you intend to use
+   2. If desired, the *ETHERSCAN_API_KEY* or *POLYGONSCAN_API_KEY* can be set in order to verify contracts, along with any values used in the *secrets* object in *Functions-request-config.js* such as *COINMARKETCAP_API_KEY*.<br><br> You will also need the following additional Google Cloud Environment Variables based on the setup you have on Google Cloud BigQuery (please refer to the `.env.example` file). In this case, we have two properties here that are being exported. To setup exporting of Google Analytics data to BigQuery, please see [this guide](https://support.google.com/analytics/answer/3437618?hl=en). To read more about authenticating with Google Cloud BigQuery APIs, see [this guide](https://cloud.google.com/bigquery/docs/authentication)
+   
+   ```    
+    GOOGLE_PROJECT_ID="Google Cloud project ID here"
+    GOOGLE_PROPERTY_2="Google Analytics property ID 1 here"
+    GOOGLE_PROPERTY_1="Google Analytics property ID 2 here"
+    GOOGLE_ISS="Google Cloud service account here"
+    GOOGLE_KEY="-----BEGIN PRIVATE KEY-----\nGoogle Cloud private key here\n-----END PRIVATE KEY-----\n"
+    ```
+
+6. Study the file `./BigQuery-API-fetch-votes.js`. If required, update the `getSQLQuery` query string to match the dataset you have setup in BigQuery.
+7. Test an end-to-end request and fulfillment locally by simulating it using:<br>`npx hardhat functions-simulate`<br><br>
+8. Deploy and verify the smart contract to an actual blockchain network by running:<br>`npx hardhat functions-deploy-client --network network_name_here --verify true`<br>**Note**: Make sure *ETHERSCAN_API_KEY* or *POLYGONSCAN_API_KEY* are set if using `--verify true`, depending on which network is used.<br><br> Network_name_here should be replaced with the network you are deploying to (Sepolia or Mumbai) in this step, as well as all steps after this one
+9. Create, fund & authorize a new Functions billing subscription by running:<br> `npx hardhat functions-sub-create --network network_name_here --amount LINK_funding_amount_here --contract 0xDeployed_client_contract_address_here`<br>**Note**: Ensure your wallet has a sufficient LINK balance before running this command.  Testnet LINK can be obtained at <a href="https://faucets.chain.link/">faucets.chain.link</a>.<br><br> A suitable amount of LINK to fund for most requests is 0.5 - 1 LINK. You should replace 0xDeployed_client_contract_address_here with your deployed contract address from the previous step.
+10. Make an on-chain request by running:<br>`npx hardhat functions-request --network network_name_here --contract 0xDeployed_client_contract_address_here --subid subscription_id_number_here`, replacing subscription_id_number_here with the subscription ID you received from the previous step
+11. To see what was stored on-chain from the result of the Chainlink Functions call, look for the emitted event `VoteCount` against the deployed smart contract on a blockchain explorer such as [Sepolia Etherscan](https://sepolia.etherscan.io/) or [Mumbai PolygonScan](https://mumbai.polygonscan.com/)
+12. Optional: to setup automatic updating of data from BigQuery to the smart contract, follow the steps below in the Automation Integration section.
+
+# Automation Integration
+
+Chainlink Functions can be used with Chainlink Automation in order to automatically trigger a Functions request.
+
+1. Create & fund a new Functions billing subscription by running:<br>`npx hardhat functions-sub-create --network network_name_here --amount LINK_funding_amount_here`<br>**Note**: Ensure your wallet has a sufficient LINK balance before running this command.<br><br>
+2. Deploy the `AutomationFunctionsConsumer` client contract by running:<br>`npx hardhat functions-deploy-auto-client --network network_name_here --subid subscription_id_number_here --interval time_between_requests_here --verify true`<br>**Note**: Make sure `ETHERSCAN_API_KEY` or `POLYGONSCAN_API_KEY` environment variables are set. API keys for these services are freely available to anyone who creates an EtherScan or PolygonScan account.<br><br>
+3. Register the contract for upkeep via the Chainlink Automation web app here: [https://automation.chain.link/](https://automation.chain.link/)
+   - Be sure to set the `Gas limit` for the `performUpkeep` function to a high enough value.  The recommended value is 1,000,000.
+   - Find further documentation for working with Chainlink Automation here: [https://docs.chain.link/chainlink-automation/introduction](https://docs.chain.link/chainlink-automation/introduction)
+
+Once the contract is registered for upkeep, check the latest response or error with the commands `npx hardhat functions-read --network network_name_here --contract contract_address_here`.
+
+For debugging, use the command `npx hardhat functions-check-upkeep --network network_name_here --contract contract_address_here` to see if Automation needs to call `performUpkeep`.
+To manually trigger a request, use the command `npx hardhat functions-perform-upkeep --network network_name_here --contract contract_address_here`.
+
+
 
 # Command Glossary
 
@@ -186,17 +193,3 @@ Once the JSON file is uploaded, set `secretsLocation` to `Location.Remote` in `F
 
 URLs which host secrets must be available every time a request is executed by DON nodes. For optimal security, it is recommended to expire the URLs when the off-chain secrets are no longer in use.
 
-# Automation Integration
-
-Chainlink Functions can be used with Chainlink Automation in order to automatically trigger a Functions request.
-
-1. Create & fund a new Functions billing subscription by running:<br>`npx hardhat functions-sub-create --network network_name_here --amount LINK_funding_amount_here`<br>**Note**: Ensure your wallet has a sufficient LINK balance before running this command.<br><br>
-2. Deploy the `AutomationFunctionsConsumer` client contract by running:<br>`npx hardhat functions-deploy-auto-client --network network_name_here --subid subscription_id_number_here --interval time_between_requests_here --verify true`<br>**Note**: Make sure `ETHERSCAN_API_KEY` or `POLYGONSCAN_API_KEY` environment variables are set. API keys for these services are freely available to anyone who creates an EtherScan or PolygonScan account.<br><br>
-3. Register the contract for upkeep via the Chainlink Automation web app here: [https://automation.chain.link/](https://automation.chain.link/)
-   - Be sure to set the `Gas limit` for the `performUpkeep` function to a high enough value.  The recommended value is 1,000,000.
-   - Find further documentation for working with Chainlink Automation here: [https://docs.chain.link/chainlink-automation/introduction](https://docs.chain.link/chainlink-automation/introduction)
-
-Once the contract is registered for upkeep, check the latest response or error with the commands `npx hardhat functions-read --network network_name_here --contract contract_address_here`.
-
-For debugging, use the command `npx hardhat functions-check-upkeep --network network_name_here --contract contract_address_here` to see if Automation needs to call `performUpkeep`.
-To manually trigger a request, use the command `npx hardhat functions-perform-upkeep --network network_name_here --contract contract_address_here`.
