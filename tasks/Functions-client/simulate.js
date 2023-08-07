@@ -4,12 +4,20 @@ const {
   getDecodedResultLog,
   getRequestConfig,
 } = require("../../FunctionsSandboxLibrary")
-const { networkConfig } = require("../../network-config")
+const { networks, SHARED_DON_PUBLIC_KEY } = require("../../networks")
+const path = require("path")
+const process = require("process")
 
 task("functions-simulate", "Simulates an end-to-end fulfillment locally for the FunctionsConsumer contract")
   .addOptionalParam(
     "gaslimit",
     "Maximum amount of gas that can be used to call fulfillRequest in the client contract (defaults to 100,000)"
+  )
+  .addOptionalParam(
+    "configpath",
+    "Path to Functions request config file",
+    `${__dirname}/../../Functions-request-config.js`,
+    types.string
   )
   .setAction(async (taskArgs, hre) => {
     // Simulation can only be conducted on a local fork of the blockchain
@@ -36,7 +44,7 @@ task("functions-simulate", "Simulates an end-to-end fulfillment locally for the 
 
     const accounts = await ethers.getSigners()
     const deployer = accounts[0]
-    // Add the wallet initiating the request to the oracle allowlist
+    // Add the wallet initiating the request to the oracle allowlist to authorize a simulated fulfillment
     const allowlistTx = await oracle.addAuthorizedSenders([deployer.address])
     await allowlistTx.wait(1)
 
@@ -54,9 +62,11 @@ task("functions-simulate", "Simulates an end-to-end fulfillment locally for the 
     await registry.addConsumer(subscriptionId, client.address)
 
     // Build the parameters to make a request from the client contract
-    const requestConfig = require("../../Functions-request-config.js")
-    const validatedRequestConfig = getRequestConfig(requestConfig)
-    // Fetch the DON public key from on-chain
+    const unvalidatedRequestConfig = require(path.isAbsolute(taskArgs.configpath)
+      ? taskArgs.configpath
+      : path.join(process.cwd(), taskArgs.configpath))
+    const requestConfig = getRequestConfig(unvalidatedRequestConfig)
+    // Fetch the mock DON public key
     const DONPublicKey = await oracle.getDONPublicKey()
     // Remove the preceding 0x from the DON public key
     requestConfig.DONPublicKey = DONPublicKey.slice(2)
@@ -69,7 +79,6 @@ task("functions-simulate", "Simulates an end-to-end fulfillment locally for the 
       const requestTx = await clientContract.executeRequest(
         request.source,
         request.secrets ?? [],
-        validatedRequestConfig.secretsLocation,
         request.args ?? [],
         subscriptionId,
         gasLimit
@@ -80,25 +89,6 @@ task("functions-simulate", "Simulates an end-to-end fulfillment locally for the 
 
       // Simulating the JavaScript code locally
       console.log("\nExecuting JavaScript request source code locally...")
-      const unvalidatedRequestConfig = require("../../Functions-request-config.js")
-      const requestConfig = getRequestConfig(unvalidatedRequestConfig)
-
-      if (requestConfig.secretsLocation === 1) {
-        requestConfig.secrets = undefined
-
-        if (!requestConfig.globalOffchainSecrets || Object.keys(requestConfig.globalOffchainSecrets).length === 0) {
-          console.log("Using secrets assigned to the first node as no global secrets were provided")
-          if (
-            requestConfig.perNodeOffchainSecrets &&
-            requestConfig.perNodeOffchainSecrets[0] &&
-            Object.keys(requestConfig.perNodeOffchainSecrets[0]).length > 0
-          ) {
-            requestConfig.secrets = requestConfig.perNodeOffchainSecrets[0]
-          }
-        } else {
-          requestConfig.secrets = requestConfig.globalOffchainSecrets
-        }
-      }
 
       const { success, result, resultLog } = await simulateRequest(requestConfig)
       console.log(`\n${resultLog}`)
@@ -203,10 +193,11 @@ const getGasUsedForFulfillRequest = async (success, result) => {
 }
 
 const deployMockOracle = async () => {
-  // Deploy a mock LINK token contract
+  // Deploy mocks: LINK token & LINK/ETH price feed
   const linkTokenFactory = await ethers.getContractFactory("LinkToken")
+  const linkPriceFeedFactory = await ethers.getContractFactory("MockV3Aggregator")
   const linkToken = await linkTokenFactory.deploy()
-  const linkEthFeedAddress = networkConfig["hardhat"]["linkEthPriceFeed"]
+  const linkPriceFeed = await linkPriceFeedFactory.deploy(0, ethers.BigNumber.from(5021530000000000))
   // Deploy proxy admin
   await upgrades.deployProxyAdmin()
   // Deploy the oracle contract
@@ -216,14 +207,14 @@ const deployMockOracle = async () => {
   })
   await oracleProxy.deployTransaction.wait(1)
   // Set the secrets encryption public DON key in the mock oracle contract
-  await oracleProxy.setDONPublicKey("0x" + networkConfig["hardhat"]["functionsPublicKey"])
+  await oracleProxy.setDONPublicKey("0x" + SHARED_DON_PUBLIC_KEY)
   // Deploy the mock registry billing contract
   const registryFactory = await ethers.getContractFactory(
     "contracts/dev/functions/FunctionsBillingRegistry.sol:FunctionsBillingRegistry"
   )
   const registryProxy = await upgrades.deployProxy(
     registryFactory,
-    [linkToken.address, linkEthFeedAddress, oracleProxy.address],
+    [linkToken.address, linkPriceFeed.address, oracleProxy.address],
     {
       kind: "transparent",
     }

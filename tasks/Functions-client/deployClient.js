@@ -1,5 +1,5 @@
 const { types } = require("hardhat/config")
-const { VERIFICATION_BLOCK_CONFIRMATIONS, networkConfig } = require("../../network-config")
+const { networks } = require("../../networks")
 
 task("functions-deploy-client", "Deploys the FunctionsConsumer contract")
   .addOptionalParam("verify", "Set to true to verify client contract", false, types.boolean)
@@ -12,7 +12,7 @@ task("functions-deploy-client", "Deploys the FunctionsConsumer contract")
 
     console.log(`Deploying FunctionsConsumer contract to ${network.name}`)
 
-    const oracleAddress = networkConfig[network.name]["functionsOracleProxy"]
+    const oracleAddress = networks[network.name]["functionsOracleProxy"]
 
     console.log("\n__Compiling Contracts__")
     await run("compile")
@@ -21,16 +21,18 @@ task("functions-deploy-client", "Deploys the FunctionsConsumer contract")
     const clientContract = await clientContractFactory.deploy(oracleAddress)
 
     console.log(
-      `\nWaiting ${VERIFICATION_BLOCK_CONFIRMATIONS} blocks for transaction ${clientContract.deployTransaction.hash} to be confirmed...`
+      `\nWaiting ${networks[network.name].confirmations} blocks for transaction ${
+        clientContract.deployTransaction.hash
+      } to be confirmed...`
     )
-    await clientContract.deployTransaction.wait(VERIFICATION_BLOCK_CONFIRMATIONS)
+    await clientContract.deployTransaction.wait(networks[network.name].confirmations)
 
     const verifyContract = taskArgs.verify
 
-    if (verifyContract && (process.env.POLYGONSCAN_API_KEY || process.env.ETHERSCAN_API_KEY)) {
+    if (verifyContract && !!networks[network.name].verifyApiKey && networks[network.name].verifyApiKey !== "UNSET") {
       try {
         console.log("\nVerifying contract...")
-        await clientContract.deployTransaction.wait(Math.max(6 - VERIFICATION_BLOCK_CONFIRMATIONS, 0))
+        await clientContract.deployTransaction.wait(Math.max(6 - networks[network.name].confirmations, 0))
         await run("verify:verify", {
           address: clientContract.address,
           constructorArguments: [oracleAddress],
@@ -38,14 +40,16 @@ task("functions-deploy-client", "Deploys the FunctionsConsumer contract")
         console.log("Contract verified")
       } catch (error) {
         if (!error.message.includes("Already Verified")) {
-          console.log("Error verifying contract.  Try delete the ./build folder and try again.")
+          console.log("Error verifying contract.  Delete the build folder and try again.")
           console.log(error)
         } else {
           console.log("Contract already verified")
         }
       }
     } else if (verifyContract) {
-      console.log("\nPOLYGONSCAN_API_KEY or ETHERSCAN_API_KEY missing. Skipping contract verification...")
+      console.log(
+        "\nPOLYGONSCAN_API_KEY, ETHERSCAN_API_KEY or SNOWTRACE_API_KEY is missing. Skipping contract verification..."
+      )
     }
 
     console.log(`\nFunctionsConsumer contract deployed to ${clientContract.address} on ${network.name}`)

@@ -15,7 +15,7 @@ Chainlink Functions allows users to request data from almost any API and perform
 ## Clone and Create Environment Variables
 
 1. Clone this repository to your local machine<br><br>
-2. Open this directory in your command line, then run `npm install` to install all dependencies.<br><br>
+2. Open this directory in your command line, then run `npm install` to install all dependencies.<br><br> From time to time if there an error that there is a corrupt lockfile, you can just delete the `./node_modules` folder and run `npm install` again.
 3. Login to Github and head to your [settings](https://github.com/settings/tokens?type=beta) to generate a "Fine Grained Personal Access Token". Name the token, set its expiration period and then go down to **Permissions** >> "Account permissions" >> "Gists" and from the "Access" dropdown, select "Read and write". 
 
 Scroll to the bottom of the page and click "Generate token" and copy the resulting personal access token.  
