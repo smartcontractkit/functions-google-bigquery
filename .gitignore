@@ -12,6 +12,7 @@ typechain
 
 # don't push the environment vars!
 .env
+.env.enc
 
 # Built application files
 .DS*

@@ -49,10 +49,8 @@ const requestConfig = {
   expectedReturnType: ReturnType.bytes,
   // Redundant URLs which point to encrypted off-chain secrets
   secretsURLs: [],
-  // Default offchain secrets object used by the `functions-build-offchain-secrets` command
-  globalOffchainSecrets: {},
   // Per-node offchain secrets objects used by the `functions-build-offchain-secrets` command
-  perNodeOffchainSecrets: [],
+  perNodeSecrets: [],
 }
 
 module.exports = requestConfig
