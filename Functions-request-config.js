@@ -1,8 +1,8 @@
 // Use subscription ID 145 & interval 10
 const fs = require("fs")
 
-// Loads environment variables from .env file (if it exists)
-require("dotenv").config()
+// Loads environment variables from .env.enc file (if it exists)
+require("@chainlink/env-enc").config()
 
 const Location = {
   Inline: 0,
@@ -49,10 +49,8 @@ const requestConfig = {
   expectedReturnType: ReturnType.bytes,
   // Redundant URLs which point to encrypted off-chain secrets
   secretsURLs: [],
-  // Default offchain secrets object used by the `functions-build-offchain-secrets` command
-  globalOffchainSecrets: {},
   // Per-node offchain secrets objects used by the `functions-build-offchain-secrets` command
-  perNodeOffchainSecrets: [],
+  perNodeSecrets: [],
 }
 
 module.exports = requestConfig

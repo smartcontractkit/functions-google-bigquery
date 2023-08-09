@@ -10,28 +10,69 @@ Chainlink Functions allows users to request data from almost any API and perform
 ## Requirements
 
 - Node.js version [18](https://nodejs.org/en/download/)
+- RPC URLs for Mumbai or Sepolia networks as well as test ETH/MATIC and test LINK tokens. Get your RPC URL with API key for Sepolia or Mumbai - from [Infura](https://infura.io) or [Alchemy](https://alchemy.com). Also, get your network's token (Sepolia Eth) or [Mumbai Matic](https://faucet.polygon.technology/) and, after connecting your Metamask wallet to the right testnet, get some LINK token(faucets.link.com) into your Metamask or other browser wallet.<br><br>  You can get LINK test tokens into your wallet by going to the [LINK Faucet](https://faucets.chain.link), connecting your Metamask and requesting test LINK.
+
+## Clone and Create Environment Variables
+
+1. Clone this repository to your local machine<br><br>
+2. Open this directory in your command line, then run `npm install` to install all dependencies.<br><br> From time to time if there an error that there is a corrupt lockfile, you can just delete the `./node_modules` folder and run `npm install` again.
+3. Login to Github and head to your [settings](https://github.com/settings/tokens?type=beta) to generate a "Fine Grained Personal Access Token". Name the token, set its expiration period and then go down to **Permissions** >> "Account permissions" >> "Gists" and from the "Access" dropdown, select "Read and write". 
+
+Scroll to the bottom of the page and click "Generate token" and copy the resulting personal access token.  
+> ⚠️	⚠️	⚠️ You cannot view this token in Github after this – so make sure you paste the value <u>temporarily</u> somewhere in case you need to close this window or want to navigate away from this page
+
+<img width="637" alt="Screenshot 2023-05-01 at 10 59 30 am" src="https://user-images.githubusercontent.com/8016129/235385875-5ff0c21c-813d-4554-8934-0f9065cc0a2e.png">
+
+
+4. Environment Variables. While you may use a `.env` file, this has two security drawbacks. The file contains your secrets and keys in human-readable form, and if these are accidentially committed and pushed to your remote repo, your keys could get compromised.  So we recommend a superior, security-first approach.  This repo ships with a dependency in the `package.json` file which contains the `@chainlink/env-enc` package. This package stores your sensitive API keys and secrets in encrypted form, which means it's not human readable.  The secrets are encrypted with a password you must supply (and remember!). The file that stores the encrypted secrets is the `.env.enc` file.  Even if someone gets access to this file, without your password it is useless to them.
+
+The environment variables you will need to have ready are:
+```
+PRIVATE_KEY="EVM wallet private key (Example: 6c0d*********************************************ac8da9)"
+MUMBAI_RPC_URL or SEPOLIA_RPC_URL  (for the network that you intend to use)
+GITHUB_API_TOKEN
+```
+
+You will also need the following additional Google Cloud Environment Variables based on the setup you have on Google Cloud BigQuery. In this case, we have two properties here that are being exported. To setup exporting of Google Analytics data to BigQuery, please see [this guide](https://support.google.com/analytics/answer/3437618?hl=en). To read more about authenticating with Google Cloud BigQuery APIs, see [this guide](https://cloud.google.com/bigquery/docs/authentication).
+```
+GOOGLE_PROJECT_ID="Google Cloud project ID here"
+GOOGLE_PROPERTY_2="Google Analytics property ID 1 here"
+GOOGLE_PROPERTY_1="Google Analytics property ID 2 here"
+GOOGLE_ISS="Google Cloud service account here"
+GOOGLE_KEY="-----BEGIN PRIVATE KEY-----\nGoogle Cloud private key here\n-----END PRIVATE KEY-----\n"
+
+// Optionally
+ETHERSCAN_API_KEY or POLYGONSCAN_API_KEY  (set these if you want to verify contracts)
+```
+<br>
+If there are any other secrets that you need to pass to your custom JS code that will be executed by Chainlink DONs, and will be included in the  `secrets` object in `./Functions-request-config.js` file.
+
+
+5. To set the encrypted environment variables using `env-enc`. So let's encrypt our environment variables and store them in encrypted form. But to do that we need to supply a password to encrypt the secrets and keys with :
+```bash
+npx env-enc set-pw
+```
+This command `npx env-enc set-pw`` must be run EVERY time you open or restart a terminal session, so that the encrypted secrets in your .env.enc file can be read by the package. After you set the password the first time, you must enter the identical password for the secrets to be successfully decrypted.
+
+6. Set the encrypted values to your secrets <u>one by one</u> using the following command:
+```bash
+npx env-enc set
+```
+Doing `npx env-enc set` will initiate a UI in your terminal for you to put your env var NAME and then its corresponding value as shown here:
+<img width="765" alt="Screenshot 2023-05-01 at 11 09 16 am" src="https://user-images.githubusercontent.com/8016129/235386817-dc290db7-56b9-4c5f-8f86-9d881a712f35.png">
+
+7. When you set one or more encrypted environment variables using `env-enc`, the tool creates a `env.enc` file in your project root.  The encrypted data in the file could look like this:
+<img width="659" alt="Screenshot 2023-05-01 at 11 10 58 am" src="https://user-images.githubusercontent.com/8016129/235386889-63a4d536-b0b3-4841-aa2a-411ab81be80f.png">
+
+Remember, this `.env.enc` file can be copied and pasted into other Chainlink Functons projects but you'll need to use the `env-enc` package and you'll need to use the same password with which you encrypted these secrets.
+
+8. When you make an on-chain request these encrypted secrets get uploaded to a private gist on your Github account, and once the Functions request is fulfilled, the gist is automatically deleted by the tool.
 
 ## Instructions to run this sample
 
-1. Clone this repository to your local machine<br><br>
-2. Open this directory in your command line, then run `npm install` to install all dependencies.<br><br>
-3. Set the required environment variables.
-   1. This can be done by copying the file *.env.example* to a new file named *.env*. (This renaming is important so that it won't be tracked by Git.) Then, change the following values:
-      - *PRIVATE_KEY* for your development wallet
-      - *MUMBAI_RPC_URL* or *SEPOLIA_RPC_URL* for the network that you intend to use
-   2. If desired, the *ETHERSCAN_API_KEY* or *POLYGONSCAN_API_KEY* can be set in order to verify contracts, along with any values used in the *secrets* object in *Functions-request-config.js* such as *COINMARKETCAP_API_KEY*.<br><br> You will also need the following additional Google Cloud Environment Variables based on the setup you have on Google Cloud BigQuery (please refer to the `.env.example` file). In this case, we have two properties here that are being exported. To setup exporting of Google Analytics data to BigQuery, please see [this guide](https://support.google.com/analytics/answer/3437618?hl=en). To read more about authenticating with Google Cloud BigQuery APIs, see [this guide](https://cloud.google.com/bigquery/docs/authentication)
-   
-   ```    
-    GOOGLE_PROJECT_ID="Google Cloud project ID here"
-    GOOGLE_PROPERTY_2="Google Analytics property ID 1 here"
-    GOOGLE_PROPERTY_1="Google Analytics property ID 2 here"
-    GOOGLE_ISS="Google Cloud service account here"
-    GOOGLE_KEY="-----BEGIN PRIVATE KEY-----\nGoogle Cloud private key here\n-----END PRIVATE KEY-----\n"
-    ```
-
 6. Study the file `./BigQuery-API-fetch-votes.js`. If required, update the `getSQLQuery` query string to match the dataset you have setup in BigQuery.
-7. Test an end-to-end request and fulfillment locally by simulating it using:<br>`npx hardhat functions-simulate`<br><br>
-8. Deploy and verify the smart contract to an actual blockchain network by running:<br>`npx hardhat functions-deploy-client --network network_name_here --verify true`<br>**Note**: Make sure *ETHERSCAN_API_KEY* or *POLYGONSCAN_API_KEY* are set if using `--verify true`, depending on which network is used.<br><br> Network_name_here should be replaced with the network you are deploying to (Sepolia or Mumbai) in this step, as well as all steps after this one
+7. Test an end-to-end request and fulfillment locally by simulating it using:<br>`npx hardhat functions-simulate --gaslimit 300000. Note that this will actually run the custom JS code in `./BigQuery-API-fetch-votes.js` and run API interactions with Google Biq Query. <br><br>
+8. Deploy and verify the `./contracts/FunctionsConsumer.sol` smart contract to an actual blockchain network by running:<br>`npx hardhat functions-deploy-client --network network_name_here --verify true`<br>**Note**: Make sure *ETHERSCAN_API_KEY* or *POLYGONSCAN_API_KEY* are set if using `--verify true`, depending on which network is used.<br><br> `Network_name_here` should be replaced with the network you are deploying to (Sepolia or Mumbai) in this step, as well as all steps after this one
 9. Create, fund & authorize a new Functions billing subscription by running:<br> `npx hardhat functions-sub-create --network network_name_here --amount LINK_funding_amount_here --contract 0xDeployed_client_contract_address_here`<br>**Note**: Ensure your wallet has a sufficient LINK balance before running this command.  Testnet LINK can be obtained at <a href="https://faucets.chain.link/">faucets.chain.link</a>.<br><br> A suitable amount of LINK to fund for most requests is 0.5 - 1 LINK. You should replace 0xDeployed_client_contract_address_here with your deployed contract address from the previous step.
 10. Make an on-chain request by running:<br>`npx hardhat functions-request --network network_name_here --contract 0xDeployed_client_contract_address_here --subid subscription_id_number_here`, replacing subscription_id_number_here with the subscription ID you received from the previous step
 11. To see what was stored on-chain from the result of the Chainlink Functions call, look for the emitted event `VoteCount` against the deployed smart contract on a blockchain explorer such as [Sepolia Etherscan](https://sepolia.etherscan.io/) or [Mumbai PolygonScan](https://mumbai.polygonscan.com/)
